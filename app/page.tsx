@@ -1,5 +1,8 @@
 'use client';
 
+import RadialSelector, {
+  RADIAL_SELECTOR_RADIUS_PX
+} from '@/components/radial-selector';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MOCK_DATES, MOCK_LONG_CONTENT } from '@/lib/mock';
 import {
@@ -19,8 +22,7 @@ import {
   BriefcaseBusinessIcon,
   PlayIcon,
   StarIcon,
-  TargetIcon,
-  XIcon
+  TargetIcon
 } from 'lucide-react';
 import {
   useRef,
@@ -29,9 +31,9 @@ import {
   useEffect
 } from 'react';
 
+const LEFT_MOUSE_BUTTON = 0;
 const LEFT_GUTTER_SIZE_PX = 64;
 const HOUR_HEIGHT_PX = 64;
-const PURPOSE_SELECTOR_RADIUS_PX = 192;
 
 export default function Home() {
   const calendarScrollArea = useRef<HTMLDivElement>(null);
@@ -76,17 +78,19 @@ export default function Home() {
   function handleBeginCalendarSelection(
     e: ReactMouseEvent<HTMLDivElement, MouseEvent>
   ) {
-    e.preventDefault();
-    if (calendarScrollArea.current && calendarTimeCodeA === null) {
-      setCalendarDate(
-        deduceCalendarDate(calendarScrollArea.current, e.nativeEvent.clientX)
-      );
-      const firstMomentPoint = deduceCalendarTimeCode(
-        calendarScrollArea.current,
-        e.nativeEvent.clientY
-      );
-      setCalendarTimeCodeA(firstMomentPoint);
-      setCalendarTimeCodeB(firstMomentPoint);
+    if (e.button === LEFT_MOUSE_BUTTON) {
+      e.preventDefault();
+      if (calendarScrollArea.current && calendarTimeCodeA === null) {
+        setCalendarDate(
+          deduceCalendarDate(calendarScrollArea.current, e.nativeEvent.clientX)
+        );
+        const firstMomentPoint = deduceCalendarTimeCode(
+          calendarScrollArea.current,
+          e.nativeEvent.clientY
+        );
+        setCalendarTimeCodeA(firstMomentPoint);
+        setCalendarTimeCodeB(firstMomentPoint);
+      }
     }
   }
 
@@ -139,7 +143,7 @@ export default function Home() {
   function positionPurposeSelector(clientX: number, clientY: number) {
     const epsilon = 8;
     if (purposeSelector.current) {
-      const diameter = PURPOSE_SELECTOR_RADIUS_PX; // width === height
+      const diameter = RADIAL_SELECTOR_RADIUS_PX; // width === height
       const radius = diameter / 2;
       purposeSelector.current.style.left =
         (clientX < radius + epsilon
@@ -214,22 +218,23 @@ export default function Home() {
   }
 
   function handleMouseUp(e: MouseEvent) {
-    if (calendarTimeCodeA !== null && selectedTimeType === null) {
-      handleEndCalendarSelection(e);
-    } else if (purposeSelector.current && selectedTimeType !== null) {
-      const selector = purposeSelector.current;
-      const radius = purposeSelector.current.clientWidth / 2;
-      if (
-        Math.sqrt(
-          Math.pow(selector.offsetLeft + radius - e.clientX, 2) +
-            Math.pow(selector.offsetTop + radius - e.clientY, 2)
-        ) > radius
-      ) {
-        handlePurposeDecision(null);
+    if (e.button === LEFT_MOUSE_BUTTON) {
+      if (calendarTimeCodeA !== null && selectedTimeType === null) {
+        handleEndCalendarSelection(e);
+      } else if (purposeSelector.current && selectedTimeType !== null) {
+        const selector = purposeSelector.current;
+        const radius = purposeSelector.current.clientWidth / 2;
+        if (
+          Math.sqrt(
+            Math.pow(selector.offsetLeft + radius - e.clientX, 2) +
+              Math.pow(selector.offsetTop + radius - e.clientY, 2)
+          ) > radius
+        ) {
+          handlePurposeDecision(null);
+        }
       }
     }
   }
-
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -325,69 +330,35 @@ export default function Home() {
           </div>
         </ScrollArea>
       </main>
-      <div
+      <RadialSelector
         ref={purposeSelector}
-        className={clsx(
-          'absolute w-48 h-48 bg-zinc-800 text-white rounded-full overflow-clip',
-          selectedTimeType === null ? 'hidden' : ''
-        )}
-      >
-        <div className="group">
-          <div className="absolute origin-bottom-right rotate-45 w-1/2 h-1/2 group-hover:bg-zinc-700 rounded-tl-full transition-all" />
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center">
-            <PlayIcon />
-            Start
-          </div>
-          <button
-            disabled={selectedTimeType === TimeType.Span}
-            onClick={() => handlePurposeDecision(TimePurpose.Start)}
-            className="absolute origin-bottom-right rotate-45 w-1/2 h-1/2 rounded-tl-full disabled:bg-white/20"
-          />
-        </div>
-        <div className="group">
-          <div className="absolute origin-bottom-left left-1/2 rotate-45 w-1/2 h-1/2 group-hover:bg-zinc-700 rounded-tr-full transition-all" />
-          <div className="absolute top-1/2 -translate-y-1/2 right-4 flex flex-col items-center">
-            <TargetIcon />
-            Due
-          </div>
-          <button
-            disabled={selectedTimeType === TimeType.Span}
-            onClick={() => handlePurposeDecision(TimePurpose.Due)}
-            className="absolute origin-bottom-left left-1/2 rotate-45 w-1/2 h-1/2 rounded-tr-full disabled:bg-white/20"
-          />
-        </div>
-        <div className="group">
-          <div className="absolute origin-top-left left-1/2 top-1/2 rotate-45 w-1/2 h-1/2 group-hover:bg-zinc-700 rounded-br-full transition-all" />
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center">
-            <StarIcon />
-            Event
-          </div>
-          <button
-            onClick={() => handlePurposeDecision(TimePurpose.Event)}
-            className="absolute origin-top-left left-1/2 top-1/2 rotate-45 w-1/2 h-1/2 rounded-br-full disabled:bg-white/20"
-          />
-        </div>
-        <div className="group">
-          <div className="absolute origin-top-right top-1/2 rotate-45 w-1/2 h-1/2 group-hover:bg-zinc-700 rounded-bl-full transition-all" />
-          <div className="absolute top-1/2 -translate-y-1/2 left-4 flex flex-col items-center">
-            <BriefcaseBusinessIcon />
-            Work
-          </div>
-          <button
-            disabled={selectedTimeType === TimeType.Moment}
-            onClick={() => handlePurposeDecision(TimePurpose.Work)}
-            className="absolute origin-top-right top-1/2 rotate-45 w-1/2 h-1/2 rounded-bl-full disabled:bg-white/20"
-          />
-        </div>
-        <div className="absolute left-1/2 -translate-x-1/2 rotate-45 h-48 w-0.5 bg-zinc-300" />
-        <div className="absolute left-1/2 -translate-x-1/2 -rotate-45 h-48 w-0.5 bg-zinc-300" />
-        <button
-          onClick={() => handlePurposeDecision(null)}
-          className="absolute left-1/2 top-1/2 -translate-1/2 flex flex-col justify-center items-center w-16 h-16 bg-zinc-800 hover:bg-zinc-700 border-2 border-zinc-300 rounded-full transition-all"
-        >
-          <XIcon />
-        </button>
-      </div>
+        visible={selectedTimeType === null}
+        topButton={{
+          icon: PlayIcon,
+          text: 'Start',
+          disabled: selectedTimeType === TimeType.Span,
+          onClick: () => handlePurposeDecision(TimePurpose.Start)
+        }}
+        leftButton={{
+          icon: BriefcaseBusinessIcon,
+          text: 'Work',
+          disabled: selectedTimeType === TimeType.Moment,
+          onClick: () => handlePurposeDecision(TimePurpose.Work)
+        }}
+        rightButton={{
+          icon: TargetIcon,
+          text: 'Due',
+          disabled: selectedTimeType === TimeType.Span,
+          onClick: () => handlePurposeDecision(TimePurpose.Due)
+        }}
+        bottomButton={{
+          icon: StarIcon,
+          text: 'Event',
+          disabled: false,
+          onClick: () => handlePurposeDecision(TimePurpose.Event)
+        }}
+        onCancel={() => handlePurposeDecision(null)}
+      />
     </div>
   );
 }
