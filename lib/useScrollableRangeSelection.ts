@@ -76,11 +76,11 @@ export default function useScrollableRangeSelection(
   }
 
   useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleEndSelection);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleEndSelection);
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleEndSelection);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleEndSelection);
     };
   });
 

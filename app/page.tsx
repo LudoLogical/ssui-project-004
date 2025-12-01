@@ -63,7 +63,7 @@ export default function Home() {
     e: ReactMouseEvent<HTMLDivElement, MouseEvent>,
     i: number
   ) {
-    if (calendarTimeCodeA === null && selectedTimeType === null) {
+    if (!calendarTimeCodeA && !selectedTimeType) {
       console.log(
         'In Progress: User selected the DATE ' +
           DAYS[i] +
@@ -98,10 +98,12 @@ export default function Home() {
   }
 
   function handleStartCalendarSelection(initialPosition: Position) {
-    setCalendarDate(deduceCalendarDate(initialPosition) ?? -1);
-    const initialTimeCode = deduceCalendarTimeCode(initialPosition) ?? null;
-    setCalendarTimeCodeA(initialTimeCode);
-    setCalendarTimeCodeB(initialTimeCode);
+    if (!selectedTimeType) {
+      setCalendarDate(deduceCalendarDate(initialPosition) ?? -1);
+      const initialTimeCode = deduceCalendarTimeCode(initialPosition) ?? null;
+      setCalendarTimeCodeA(initialTimeCode);
+      setCalendarTimeCodeB(initialTimeCode);
+    }
   }
 
   function handleDragCalendarSelection(_: Position, currentPosition: Position) {
@@ -109,7 +111,7 @@ export default function Home() {
       calendarScrollArea.current &&
       calendarSpanSelector.current &&
       calendarTimeCodeA &&
-      selectedTimeType === null
+      !selectedTimeType
     ) {
       const newTimeCodeB = deduceCalendarTimeCode(currentPosition);
       if (newTimeCodeB) {
@@ -191,7 +193,7 @@ export default function Home() {
   }
 
   function handlePurposeDecision(decision: TimePurpose | null) {
-    if (decision === null) {
+    if (!decision) {
       console.log(
         'Incomplete: User cancelled the operation. No action would be taken.'
       );
@@ -227,9 +229,9 @@ export default function Home() {
   }
 
   useEffect(() => {
-    window.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('click', handleMouseUp);
     return () => {
-      window.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('click', handleMouseUp);
     };
   });
 
