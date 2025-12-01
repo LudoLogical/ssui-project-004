@@ -2,25 +2,25 @@ const MOCK_DATES = [17, 18, 19, 20, 21, 22, 23];
 
 const MOCK_LONG_CONTENT = (
   <p>
-    test
+    Event 1
     <br />
-    test
+    Event 2
     <br />
-    test
+    Event 3
     <br />
-    test
+    Event 4
     <br />
-    test
+    Event 5
     <br />
-    test
+    Event 6
     <br />
-    test
+    Event 7
     <br />
-    test
+    Event 8
     <br />
-    test
+    Event 9
     <br />
-    test
+    Event 10
   </p>
 );
 
