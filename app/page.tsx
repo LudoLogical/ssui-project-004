@@ -17,6 +17,9 @@ import {
   TimePurpose,
   TimeType
 } from '@/lib/time';
+import useScrollableRangeSelection, {
+  Position
+} from '@/lib/useScrollableRangeSelection';
 import clsx from 'clsx';
 import {
   BriefcaseBusinessIcon,
@@ -40,6 +43,13 @@ export default function Home() {
   const calendarSpanSelector = useRef<HTMLDivElement>(null);
   const purposeSelector = useRef<HTMLDivElement>(null);
 
+  const startRangeSelection = useScrollableRangeSelection(
+    calendarScrollArea,
+    handleStartCalendarSelection,
+    handleDragCalendarSelection,
+    handleEndCalendarSelection
+  );
+
   const [calendarDate, setCalendarDate] = useState<number>(-1);
   const [calendarTimeCodeA, setCalendarTimeCodeA] =
     useState<CalendarTimeCode | null>(null);
@@ -48,80 +58,6 @@ export default function Home() {
   const [selectedTimeType, setSelectedTimeType] = useState<TimeType | null>(
     null
   );
-
-  // const isDragAndDropping = useRef<boolean>(false);
-  // const draggedElement = useRef<HTMLDivElement>(null);
-
-  function deduceCalendarDate(calendarDiv: HTMLDivElement, clientX: number) {
-    const bounds = calendarDiv.getBoundingClientRect();
-    const relativeX = clientX - bounds.left - LEFT_GUTTER_SIZE_PX; // must account for gutter size
-    return Math.floor(
-      (relativeX * DAYS.length) /
-        (calendarDiv.clientWidth - LEFT_GUTTER_SIZE_PX)
-    );
-  }
-
-  function deduceCalendarTimeCode(
-    calendarDiv: HTMLDivElement,
-    clientY: number
-  ): CalendarTimeCode {
-    const bounds = calendarDiv.getBoundingClientRect();
-    const relativeY = clientY - bounds.top + calendarDiv.scrollTop;
-    return ctcFromQuartersSafely(
-      Math.round(
-        (relativeY * HOURS.length * QUARTERS_PER_HOUR) /
-          calendarDiv.scrollHeight
-      )
-    );
-  }
-
-  function handleBeginCalendarSelection(
-    e: ReactMouseEvent<HTMLDivElement, MouseEvent>
-  ) {
-    if (e.button === LEFT_MOUSE_BUTTON) {
-      e.preventDefault();
-      if (calendarScrollArea.current && calendarTimeCodeA === null) {
-        setCalendarDate(
-          deduceCalendarDate(calendarScrollArea.current, e.nativeEvent.clientX)
-        );
-        const firstMomentPoint = deduceCalendarTimeCode(
-          calendarScrollArea.current,
-          e.nativeEvent.clientY
-        );
-        setCalendarTimeCodeA(firstMomentPoint);
-        setCalendarTimeCodeB(firstMomentPoint);
-      }
-    }
-  }
-
-  function handleEndCalendarSelection(e: MouseEvent) {
-    if (
-      calendarScrollArea.current &&
-      purposeSelector.current &&
-      calendarTimeCodeA !== null
-    ) {
-      let output = 'In Progress: User selected a ';
-      if (
-        calendarTimeCodeB !== null &&
-        !ctcsAreEqual(calendarTimeCodeA, calendarTimeCodeB)
-      ) {
-        output +=
-          'SPAN (' +
-          naturalFormFromCTC(calendarTimeCodeA, true) +
-          ' to ' +
-          naturalFormFromCTC(calendarTimeCodeB, true) +
-          ')';
-        setSelectedTimeType(TimeType.Span);
-      } else {
-        output += 'MOMENT (' + naturalFormFromCTC(calendarTimeCodeA) + ')';
-        setSelectedTimeType(TimeType.Moment);
-      }
-      output +=
-        ' from ' + DAYS[calendarDate] + ' ' + MOCK_DATES[calendarDate] + '.';
-      console.log(output);
-      positionPurposeSelector(e.clientX, e.clientY);
-    }
-  }
 
   function handleAgendaSelection(
     e: ReactMouseEvent<HTMLDivElement, MouseEvent>,
@@ -140,23 +76,117 @@ export default function Home() {
     }
   }
 
-  function positionPurposeSelector(clientX: number, clientY: number) {
+  function deduceCalendarDate(position: Position) {
+    if (calendarScrollArea.current) {
+      return Math.floor(
+        ((position.x - LEFT_GUTTER_SIZE_PX) /
+          (calendarScrollArea.current.clientWidth - LEFT_GUTTER_SIZE_PX)) *
+          DAYS.length
+      );
+    }
+  }
+
+  function deduceCalendarTimeCode(position: Position) {
+    if (calendarScrollArea.current) {
+      return ctcFromQuartersSafely(
+        Math.round(
+          (position.y * HOURS.length * QUARTERS_PER_HOUR) /
+            calendarScrollArea.current.scrollHeight
+        )
+      );
+    }
+  }
+
+  function handleStartCalendarSelection(initialPosition: Position) {
+    setCalendarDate(deduceCalendarDate(initialPosition) ?? -1);
+    const initialTimeCode = deduceCalendarTimeCode(initialPosition) ?? null;
+    setCalendarTimeCodeA(initialTimeCode);
+    setCalendarTimeCodeB(initialTimeCode);
+  }
+
+  function handleDragCalendarSelection(_: Position, currentPosition: Position) {
+    if (
+      calendarScrollArea.current &&
+      calendarSpanSelector.current &&
+      calendarTimeCodeA &&
+      selectedTimeType === null
+    ) {
+      const newTimeCodeB = deduceCalendarTimeCode(currentPosition);
+      if (newTimeCodeB) {
+        if (!ctcsAreEqual(calendarTimeCodeA, newTimeCodeB)) {
+          const ctcAQuarters = quartersFromCTC(calendarTimeCodeA);
+          const ctcBQuarters = quartersFromCTC(newTimeCodeB);
+          calendarSpanSelector.current.style.left =
+            (calendarDate *
+              (calendarScrollArea.current.clientWidth - LEFT_GUTTER_SIZE_PX)) /
+              DAYS.length +
+            'px';
+          calendarSpanSelector.current.style.top =
+            (Math.min(ctcAQuarters, ctcBQuarters) * HOUR_HEIGHT_PX) /
+              QUARTERS_PER_HOUR +
+            'px';
+          calendarSpanSelector.current.style.width =
+            (calendarScrollArea.current.clientWidth - LEFT_GUTTER_SIZE_PX) /
+              DAYS.length +
+            'px';
+          calendarSpanSelector.current.style.height =
+            (Math.abs(ctcAQuarters - ctcBQuarters) * HOUR_HEIGHT_PX) /
+              QUARTERS_PER_HOUR +
+            'px';
+        }
+        setCalendarTimeCodeB(newTimeCodeB);
+      }
+    }
+  }
+
+  function handleEndCalendarSelection(_: Position, finalPosition: Position) {
+    if (
+      calendarScrollArea.current &&
+      purposeSelector.current &&
+      calendarTimeCodeA
+    ) {
+      let output = 'In Progress: User selected a ';
+      if (
+        calendarTimeCodeB &&
+        !ctcsAreEqual(calendarTimeCodeA, calendarTimeCodeB)
+      ) {
+        output +=
+          'SPAN (' +
+          naturalFormFromCTC(calendarTimeCodeA, true) +
+          ' to ' +
+          naturalFormFromCTC(calendarTimeCodeB, true) +
+          ')';
+        setSelectedTimeType(TimeType.Span);
+      } else {
+        output += 'MOMENT (' + naturalFormFromCTC(calendarTimeCodeA) + ')';
+        setSelectedTimeType(TimeType.Moment);
+      }
+      output +=
+        ' from ' + DAYS[calendarDate] + ' ' + MOCK_DATES[calendarDate] + '.';
+      console.log(output);
+      setCalendarTimeCodeA(null);
+      setCalendarTimeCodeB(null);
+      positionPurposeSelector(finalPosition.absoluteX, finalPosition.absoluteY);
+    }
+  }
+
+  function positionPurposeSelector(x: number, y: number) {
     const epsilon = 8;
     if (purposeSelector.current) {
       const diameter = RADIAL_SELECTOR_RADIUS_PX; // width === height
       const radius = diameter / 2;
       purposeSelector.current.style.left =
-        (clientX < radius + epsilon
+        (x < radius + epsilon
           ? epsilon
-          : clientX + radius + epsilon > window.innerWidth
+          : x + radius + epsilon > window.innerWidth
             ? window.innerWidth - diameter - epsilon
-            : clientX - radius) + 'px';
+            : x - radius) + 'px';
       purposeSelector.current.style.top =
-        (clientY < radius + epsilon
+        (y < radius + epsilon
           ? epsilon
-          : clientY + radius + epsilon > window.innerHeight
+          : y + radius + epsilon > window.innerHeight
             ? window.innerHeight - diameter - epsilon
-            : clientY - radius) + 'px';
+            : y - radius) + 'px';
     }
   }
 
@@ -177,69 +207,28 @@ export default function Home() {
     setSelectedTimeType(null);
   }
 
-  function handleMouseMove(e: MouseEvent) {
-    e.preventDefault();
+  function handleMouseUp(e: MouseEvent) {
     if (
-      calendarScrollArea.current &&
-      calendarSpanSelector.current &&
-      calendarTimeCodeA !== null &&
-      selectedTimeType === null
+      e.button === LEFT_MOUSE_BUTTON &&
+      purposeSelector.current &&
+      selectedTimeType
     ) {
-      const newTimeCodeB = deduceCalendarTimeCode(
-        calendarScrollArea.current,
-        e.clientY
-      );
+      const selector = purposeSelector.current;
+      const radius = purposeSelector.current.clientWidth / 2;
       if (
-        calendarTimeCodeB !== null &&
-        !ctcsAreEqual(calendarTimeCodeA, newTimeCodeB)
+        Math.sqrt(
+          Math.pow(selector.offsetLeft + radius - e.clientX, 2) +
+            Math.pow(selector.offsetTop + radius - e.clientY, 2)
+        ) > radius
       ) {
-        const ctcAQuarters = quartersFromCTC(calendarTimeCodeA);
-        const ctcBQuarters = quartersFromCTC(newTimeCodeB);
-        calendarSpanSelector.current.style.left =
-          (calendarDate *
-            (calendarScrollArea.current.clientWidth - LEFT_GUTTER_SIZE_PX)) /
-            DAYS.length +
-          'px';
-        calendarSpanSelector.current.style.top =
-          (Math.min(ctcAQuarters, ctcBQuarters) * HOUR_HEIGHT_PX) /
-            QUARTERS_PER_HOUR +
-          'px';
-        calendarSpanSelector.current.style.width =
-          (calendarScrollArea.current.clientWidth - LEFT_GUTTER_SIZE_PX) /
-            DAYS.length +
-          'px';
-        calendarSpanSelector.current.style.height =
-          (Math.abs(ctcAQuarters - ctcBQuarters) * HOUR_HEIGHT_PX) /
-            QUARTERS_PER_HOUR +
-          'px';
+        handlePurposeDecision(null);
       }
-      setCalendarTimeCodeB(newTimeCodeB);
     }
   }
 
-  function handleMouseUp(e: MouseEvent) {
-    if (e.button === LEFT_MOUSE_BUTTON) {
-      if (calendarTimeCodeA !== null && selectedTimeType === null) {
-        handleEndCalendarSelection(e);
-      } else if (purposeSelector.current && selectedTimeType !== null) {
-        const selector = purposeSelector.current;
-        const radius = purposeSelector.current.clientWidth / 2;
-        if (
-          Math.sqrt(
-            Math.pow(selector.offsetLeft + radius - e.clientX, 2) +
-              Math.pow(selector.offsetTop + radius - e.clientY, 2)
-          ) > radius
-        ) {
-          handlePurposeDecision(null);
-        }
-      }
-    }
-  }
   useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
   });
@@ -284,7 +273,7 @@ export default function Home() {
         </div>
         <ScrollArea
           ref={calendarScrollArea}
-          onMouseDown={handleBeginCalendarSelection}
+          onMouseDown={startRangeSelection}
           className="flex flex-col grow w-full overflow-y-auto"
         >
           <div className="flex flex-row w-full">
