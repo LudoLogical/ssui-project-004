@@ -63,7 +63,7 @@ export default function Home() {
     e: ReactMouseEvent<HTMLDivElement, MouseEvent>,
     i: number
   ) {
-    if (!calendarTimeCodeA && !selectedTimeType) {
+    if (calendarTimeCodeA === null && selectedTimeType === null) {
       console.log(
         'In Progress: User selected the DATE ' +
           DAYS[i] +
@@ -98,7 +98,7 @@ export default function Home() {
   }
 
   function handleStartCalendarSelection(initialPosition: Position) {
-    if (!selectedTimeType) {
+    if (selectedTimeType === null) {
       setCalendarDate(deduceCalendarDate(initialPosition) ?? -1);
       const initialTimeCode = deduceCalendarTimeCode(initialPosition) ?? null;
       setCalendarTimeCodeA(initialTimeCode);
@@ -110,8 +110,8 @@ export default function Home() {
     if (
       calendarScrollArea.current &&
       calendarSpanSelector.current &&
-      calendarTimeCodeA &&
-      !selectedTimeType
+      calendarTimeCodeA !== null &&
+      selectedTimeType === null
     ) {
       const newTimeCodeB = deduceCalendarTimeCode(currentPosition);
       if (newTimeCodeB) {
@@ -145,11 +145,11 @@ export default function Home() {
     if (
       calendarScrollArea.current &&
       purposeSelector.current &&
-      calendarTimeCodeA
+      calendarTimeCodeA !== null
     ) {
       let output = 'In Progress: User selected a ';
       if (
-        calendarTimeCodeB &&
+        calendarTimeCodeB !== null &&
         !ctcsAreEqual(calendarTimeCodeA, calendarTimeCodeB)
       ) {
         output +=
@@ -209,11 +209,11 @@ export default function Home() {
     setSelectedTimeType(null);
   }
 
-  function handleMouseUp(e: MouseEvent) {
+  function handleGlobalClick(e: MouseEvent) {
     if (
       e.button === LEFT_MOUSE_BUTTON &&
       purposeSelector.current &&
-      selectedTimeType
+      selectedTimeType !== null
     ) {
       const selector = purposeSelector.current;
       const radius = purposeSelector.current.clientWidth / 2;
@@ -229,9 +229,9 @@ export default function Home() {
   }
 
   useEffect(() => {
-    document.addEventListener('click', handleMouseUp);
+    document.addEventListener('click', handleGlobalClick);
     return () => {
-      document.removeEventListener('click', handleMouseUp);
+      document.removeEventListener('click', handleGlobalClick);
     };
   });
 

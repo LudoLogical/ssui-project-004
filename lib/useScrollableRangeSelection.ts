@@ -57,10 +57,10 @@ export default function useScrollableRangeSelection(
   }
 
   function handleMouseMove(e: MouseEvent) {
-    if (initialPosition) {
+    if (initialPosition !== null) {
       e.preventDefault();
       const currentPosition = getCurrentPosition(e.clientX, e.clientY);
-      if (currentPosition) {
+      if (currentPosition !== null) {
         setFinalPosition(currentPosition);
         onDrag(initialPosition, currentPosition);
       }
